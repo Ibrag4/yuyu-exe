@@ -306,20 +306,22 @@ function finaleLoop() {
 const SPRITE = [
   "..hhhhhh..",
   ".hhhhhhhh.",
-  "hhsssssshh",
-  "hhsesseshh",
-  "hhpssssphh",
-  "hh.ssss.hh",
-  "hhcccccchh",
-  ".ccczzccc.",
-  ".scczzccs.",
-  "..cczzcc..",
+  "hssssssssh",
+  "hsessssesh",
+  "hspssssPsh",
+  ".ssssssss.",
+  "..cccccc..",
+  ".sccccccs.",
+  ".sccccccs.",
+  "..cccccc..",
   "..nnnnnn..",
   "..nn..nn..",
   "..kk..kk..",
   ".kkk..kkk."
 ];
-const PAL = { h: "#5b3a6e", s: "#ffd9b8", e: "#2b1b3a", p: "#ff9ec4", P: "#ff9ec4", c: "#1f3a6b", z: "#5b7fc4", n: "#d9c4a0", k: "#ffffff", b: "#ff6fa5" };
+
+// Skin:
+ const PAL = { h: "#5b3a6e", s: "#ffd9b8", e: "#2b1b3a", p: "#ff9ec4", P: "#ff9ec4", c: "#232b55", n: "#e6d9bd", k: "#ffffff" };
 
 function rect(c, x, y, w, h, color) { c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), w, h); }
 
