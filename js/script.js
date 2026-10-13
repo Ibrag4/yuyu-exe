@@ -55,8 +55,8 @@ const CONFIG = {
 /* =====================================================================
    2. GAME SETTINGS (change these numbers to make it easier or harder)
    ===================================================================== */
-const W = 640, H = 320;      // canvas size (CSS scales it to any screen)
-const GY = 262;              // ground height
+let W = 640, H = 320;      // canvas size (CSS scales it to any screen)
+let GY = 262;              // ground height
 const BASE_SPEED = 4.5;      // how fast Yuyu skates
 const GRAV = 0.75;           // gravity
 const JUMP = 13.5;           // jump power
@@ -70,6 +70,24 @@ const canvas = $("game");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
+// Makes the game fill the whole screen (portrait or landscape) without stretching
+function resizeCanvas() {
+  const r = $("stage").getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const a = r.width / r.height, oldGY = GY;
+  W = Math.max(360, Math.round(300 * a));
+  H = Math.round(W / a);
+  GY = Math.round(H - Math.max(60, H * 0.2));
+  canvas.width = W; canvas.height = H;
+  ctx.imageSmoothingEnabled = false;
+  if (p) {   // keep everything standing on the new ground line
+    const d = GY - oldGY;
+    p.y += d; coins.forEach((c) => (c.y += d));
+    if (gift) gift.y += d;
+    if (cake) cake.y += d;
+  }
+}
+
 /* =====================================================================
    3. GAME STATE
    ===================================================================== */
@@ -80,7 +98,7 @@ let giftsFound, coinCount, nextGiftAt, nextObAt;
 
 // Starts (or restarts) everything from the beginning.
 function resetGame() {
-  p = { x: 90, y: GY - 40, w: 22, h: 40, vy: 0, onGround: true, noCut: false, stumble: 0, inv: 0 };
+  p = { x: 70, y: GY - 52, w: 28, h: 52, vy: 0, onGround: true, noCut: false, stumble: 0, inv: 0 };
   dist = 0; obstacles = []; coins = []; gift = null; cake = null;
   cakeAt = Infinity; atCake = false;
   giftsFound = 0; coinCount = 0; nextGiftAt = FIRST_GIFT; nextObAt = 500;
@@ -105,10 +123,10 @@ function spawnObstacle() {
   const o = { ...types[Math.floor(Math.random() * types.length)], x: W + 20, used: false };
   obstacles.push(o);
   if (o.t === "ramp") {   // stars in the air after a ramp
-    for (let i = 0; i < 3; i++) coins.push({ x: o.x + o.w + 40 + i * 30, y: GY - 120 - (i === 1 ? 10 : 0), w: 12, h: 12, got: false });
+    for (let i = 0; i < 3; i++) coins.push({ x: o.x + o.w + 40 + i * 36, y: GY - 130 - (i === 1 ? 12 : 0), w: 22, h: 18, got: false });
   } else {                // a little arc of stars above the obstacle shows when to jump
-    [[-26, 50], [0, 64], [26, 50]].forEach(([dx, h]) =>
-      coins.push({ x: o.x + o.w / 2 + dx - 6, y: GY - o.h - h, w: 12, h: 12, got: false }));
+    [[-30, 50], [0, 66], [30, 50]].forEach(([dx, h]) =>
+      coins.push({ x: o.x + o.w / 2 + dx - 11, y: GY - o.h - h - 6, w: 22, h: 18, got: false }));
   }
 }
 
@@ -188,7 +206,7 @@ function update(s) {
 
 function updateHud() {
   $("giftCount").textContent = "🎁 " + giftsFound + "/5";
-  $("coinCount").textContent = "⭐ " + coinCount;
+  $("coinCount").textContent = "🐶 " + coinCount;
 }
 
 let toastTimer;
@@ -261,10 +279,11 @@ function newConfetti(randomY) {
 
 function finaleLoop() {
   if (!finaleOn) return;
-  cakeCtx.clearRect(0, 0, 160, 120);
-  drawCake(cakeCtx, 16, 24, 8);
+  cakeCtx.clearRect(0, 0, 240, 120);
+  drawCake(cakeCtx, 12, 16, 6);
+  drawDog(cakeCtx, 140, 106 - 54 - Math.round(Math.abs(Math.sin(time * 6)) * 4), 6, Math.floor(time * 6));
   for (let i = 0; i < 8; i++) {
-    if (Math.floor(time * 4 + i) % 3 === 0) sparkle(cakeCtx, 10 + ((i * 47) % 140), 8 + ((i * 29) % 100), 3);
+    if (Math.floor(time * 4 + i) % 3 === 0) sparkle(cakeCtx, 10 + ((i * 61) % 220), 8 + ((i * 29) % 100), 3);
   }
   confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
   confetti.forEach((c, i) => {
@@ -300,6 +319,33 @@ const PAL = { h: "#5b3a6e", s: "#ffd9b8", e: "#2b1b3a", p: "#ff9ec4", P: "#ff9ec
 
 function rect(c, x, y, w, h, color) { c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), w, h); }
 
+// Draws a pixel-art grid. rows = array of strings, pal = letter -> color, s = pixel size.
+// If "outline" is given, a thin outline color is drawn behind it (helps white shapes stand out).
+function drawSprite(c, rows, pal, x, y, s, outline) {
+  const paint = (ox, oy, col) => rows.forEach((row, r) => {
+    for (let i = 0; i < row.length; i++)
+      if (row[i] !== ".") rect(c, x + ox + i * s, y + oy + r * s, s, s, col || pal[row[i]]);
+  });
+  if (outline) { const o = Math.max(1, Math.round(s / 2)); [[-o, 0], [o, 0], [0, -o], [0, o]].forEach(([a, b]) => paint(a, b, outline)); }
+  paint(0, 0);
+}
+
+// Little white fluffy bichon puppy (faces left). 11x9 grid, two leg frames for trotting.
+const DOG = [
+  ".www......w",
+  "wwwwww...ww",
+  "wkwkwwwwwww",
+  "wwkwwwwwwww",
+  ".wwpwwwwww.",
+  "..wwwwwwww.",
+  "..wwwwwwww."
+];
+const DOG_LEGS = [["..ww....ww.", "..gg....gg."], ["...ww..ww..", "...gg..gg.."]];
+const DOG_PAL = { w: "#ffffff", g: "#cfd6e6", k: "#2b1b3a", p: "#ff8fb1" };
+function drawDog(c, x, y, s, frame) {
+  drawSprite(c, DOG.concat(DOG_LEGS[frame % 2]), DOG_PAL, x, y, s, "#8d6bb8");
+}
+
 function sparkle(c, x, y, s) {
   rect(c, x, y - s, s, s * 3, "#fff6a8");
   rect(c, x - s, y, s * 3, s, "#fff6a8");
@@ -323,11 +369,11 @@ function drawBackground() {
   const g = ctx.createLinearGradient(0, 0, 0, GY);
   g.addColorStop(0, "#bde7ff"); g.addColorStop(1, "#ffe3f1");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  rect(ctx, 540, 30, 40, 40, "#fff3a0");                                   // sun
-  for (let i = 0; i < 6; i++) {                                            // clouds
-    const cx = ((((i * 230 - dist * 0.15 - time * 5) % 1400) + 1400) % 1400) - 120;
-    rect(ctx, cx, 40 + (i % 3) * 32, 60, 14, "#fff");
-    rect(ctx, cx + 12, 30 + (i % 3) * 32, 34, 12, "#fff");
+  rect(ctx, W - 100, Math.round(GY * 0.08), 40, 40, "#fff3a0");                                   // sun
+  for (let i = 0; i < 8; i++) {                                            // clouds
+    const cx = ((((i * 180 - dist * 0.15 - time * 5) % 1400) + 1400) % 1400) - 120;
+    rect(ctx, cx, Math.round(GY * 0.12 + (i % 4) * GY * 0.14) + 10, 60, 14, "#fff");
+    rect(ctx, cx + 12, Math.round(GY * 0.12 + (i % 4) * GY * 0.14), 34, 12, "#fff");
   }
   for (let x = 0; x < W; x += 16) {                                        // pixel hills
     const h = Math.round((40 + 26 * Math.sin((x + dist * 0.3) / 70)) / 8) * 8;
@@ -370,8 +416,8 @@ function draw() {
 
   coins.forEach((c) => {                                       // stars
     const b = Math.round(Math.sin(time * 6 + c.x / 20) * 2);
-    rect(ctx, c.x + 4, c.y + b, 4, 12, "#ffd34d");
-    rect(ctx, c.x, c.y + 4 + b, 12, 4, "#ffd34d");
+    drawDog(ctx, c.x, c.y + b, 2, Math.floor(time * 8));
+    
   });
 
   if (gift) {                                                  // gift box
@@ -386,6 +432,7 @@ function draw() {
 
   if (cake) {
     drawCake(ctx, cake.x, cake.y, 3);
+    drawDog(ctx, cake.x + 62, GY - 27 - Math.round(Math.abs(Math.sin(time * 6)) * 3), 3, Math.floor(time * 6));   // puppy trots in with the cake
     if (Math.floor(time * 3) % 2) sparkle(ctx, cake.x + 58, cake.y - 6, 3);
   }
 
@@ -393,14 +440,11 @@ function draw() {
   if (!(p.inv > 0 && Math.floor(p.inv / 5) % 2)) {
     const feet = p.y + p.h;
     const bob = p.onGround && !atCake ? Math.floor(time * 12) % 2 : 0;
-    const sx = p.x - 4, sy = feet - 46 + bob;
-    SPRITE.forEach((row, r) => {
-      for (let c = 0; c < row.length; c++)
-        if (row[c] !== ".") rect(ctx, sx + c * 3, sy + r * 3, 3, 3, PAL[row[c]]);
-    });
-    rect(ctx, p.x - 6, feet - 5, 34, 3, "#7a4bd1");            // board
-    rect(ctx, p.x, feet - 2, 5, 3, "#fff");                    // wheels
-    rect(ctx, p.x + 17, feet - 2, 5, 3, "#fff");
+    const sx = p.x - 6, sy = feet - 62 + bob;
+    drawSprite(ctx, SPRITE, PAL, sx, sy, 4);
+    rect(ctx, p.x - 8, feet - 6, 44, 4, "#7a4bd1");            // board
+    rect(ctx, p.x, feet - 2, 6, 4, "#fff");                    // wheels
+    rect(ctx, p.x + 24, feet - 2, 6, 4, "#fff");
   }
   ctx.restore();
 }
@@ -424,6 +468,7 @@ function loop(now) {
 function startGame() {
   resetGame();
   ["startScreen", "pauseScreen", "giftModal", "finale"].forEach((id) => $(id).classList.add("hidden"));
+  toast("Tap to jump! 👆");
   finaleOn = false;
   state = "play";
 }
@@ -473,5 +518,7 @@ $("resumeBtn").addEventListener("click", togglePause);
 $("giftClose").addEventListener("click", closeGift);
 
 // Build the first scene and begin drawing (the game waits on the start screen)
+resizeCanvas();
+new ResizeObserver(resizeCanvas).observe($("stage"));
 resetGame();
 requestAnimationFrame(loop);

@@ -14,7 +14,7 @@
   <header id="hud">
     <span class="hud-title">YUYU.EXE</span>
     <span id="giftCount" aria-live="polite">🎁 0/5</span>
-    <span id="coinCount" aria-label="Stars collected">⭐ 0</span>
+    <span id="coinCount" aria-label="Puppies collected">🐶 0</span>
     <div id="progressWrap" role="progressbar" aria-label="Progress to the cake" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div id="progressBar"></div>
     </div>
@@ -27,16 +27,13 @@
     <canvas id="game" width="640" height="320" role="img" aria-label="YUYU.EXE game screen"></canvas>
     <div id="toast" aria-live="polite"></div>
   </div>
-
-  <!-- Big visual jump area (the whole screen already works as a jump button) -->
-  <div id="jumpBtn" aria-hidden="true">▲ TAP TO JUMP</div>
 </main>
 
 <!-- Start screen -->
 <section id="startScreen" class="overlay">
   <div class="card">
     <h1 class="title">YUYU.EXE</h1>
-    <p>A tiny birthday adventure. Skate, jump over obstacles and find 5 gifts!</p>
+    <p>A tiny birthday adventure. Skate, jump over obstacles and collect puppies and find 5 gifts!</p>
     <p class="small">📱 Tap the screen to jump (hold for a higher jump)<br>⌨️ Space / ↑ to jump &nbsp;|&nbsp; P pause &nbsp;|&nbsp; R restart</p>
     <button id="startBtn" class="px-btn big" aria-label="Start game">▶ START</button>
   </div>
@@ -66,7 +63,7 @@
 <section id="finale" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="finaleTitle">
   <canvas id="confetti"></canvas>
   <div class="card">
-    <canvas id="cakeCanvas" width="160" height="120" aria-label="Pixel birthday cake"></canvas>
+    <canvas id="cakeCanvas" width="240" height="120" aria-label="Pixel birthday cake"></canvas>
     <h2 id="finaleTitle" class="title small-title"></h2>
     <p id="finaleMessage"></p>
     <p id="finaleSign" class="caption"></p>
