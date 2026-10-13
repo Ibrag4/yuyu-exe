@@ -71,6 +71,7 @@ html, body {
 .px-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 .px-btn:focus-visible { outline: 3px dashed var(--hot); outline-offset: 3px; }
 .px-btn.big { font-size: 18px; padding: 12px 22px; margin-top: 8px; }
+#hud .px-btn { min-width: 38px; min-height: 34px; padding: 3px 8px; }
 
 /* ===== Popups ===== */
 .overlay {

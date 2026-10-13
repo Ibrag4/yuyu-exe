@@ -44,6 +44,10 @@ const CONFIG = {
     }
   ],
 
+  // Background music (optional). Put your own audio file in assets/audio/ and set its name here.
+  // volume goes from 0 (silent) to 1 (loud). Keep it low so it stays in the background.
+  music: { file: "assets/audio/youngchoyee.mp3", volume: 0.12 },
+
   // Birthday ending (shown after the cake is collected)
   finale: {
     title: "Happy Birthday, Yuyu!",
@@ -300,22 +304,22 @@ function finaleLoop() {
    ===================================================================== */
 // Yuyu: 10x14 pixel grid, drawn 3x bigger. Letters are colors from PAL.
 const SPRITE = [
-  "..hhhhhbb.",
+  "..hhhhhh..",
   ".hhhhhhhh.",
-  "hssssssssh",
-  "hsessssesh",
-  "hspssssPsh",
-  ".ssssssss.",
-  "..cccccc..",
-  ".sccccccs.",
-  ".sccccccs.",
-  "..cccccc..",
+  "hhsssssshh",
+  "hhsesseshh",
+  "hhpssssphh",
+  "hh.ssss.hh",
+  "hhcccccchh",
+  ".ccczzccc.",
+  ".scczzccs.",
+  "..cczzcc..",
   "..nnnnnn..",
   "..nn..nn..",
   "..kk..kk..",
   ".kkk..kkk."
 ];
-const PAL = { h: "#5b3a6e", s: "#ffd9b8", e: "#2b1b3a", p: "#ff9ec4", P: "#ff9ec4", c: "#8fe3c8", n: "#6c8cff", k: "#ffffff", b: "#ff6fa5" };
+const PAL = { h: "#5b3a6e", s: "#ffd9b8", e: "#2b1b3a", p: "#ff9ec4", P: "#ff9ec4", c: "#1f3a6b", z: "#5b7fc4", n: "#d9c4a0", k: "#ffffff", b: "#ff6fa5" };
 
 function rect(c, x, y, w, h, color) { c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), w, h); }
 
@@ -469,6 +473,7 @@ function startGame() {
   resetGame();
   ["startScreen", "pauseScreen", "giftModal", "finale"].forEach((id) => $(id).classList.add("hidden"));
   toast("Tap to jump! 👆");
+  playMusic();
   finaleOn = false;
   state = "play";
 }
@@ -508,7 +513,30 @@ window.addEventListener("keyup", (e) => {
 });
 
 // Auto-pause if the phone locks or you switch apps
-document.addEventListener("visibilitychange", () => { if (document.hidden && state === "play") togglePause(); });
+// Background music: soft, loops, and starts when the player taps START (phones require a tap first)
+const bgm = new Audio();
+let musicOn = true;
+bgm.loop = true;
+bgm.volume = CONFIG.music.volume;
+bgm.onerror = () => $("musicBtn").classList.add("hidden");   // no audio file yet? hide the button
+bgm.src = CONFIG.music.file;
+function playMusic() {
+  if (!musicOn) return;
+  const r = bgm.play();                    // older browsers return nothing here
+  if (r && r.catch) r.catch(() => {});     // blocked or missing file: just stay silent
+}
+$("musicBtn").addEventListener("click", (e) => {
+  e.currentTarget.blur();
+  musicOn = !musicOn;
+  e.currentTarget.textContent = musicOn ? "🔊" : "🔇";
+  if (musicOn) playMusic(); else bgm.pause();
+});
+
+// Auto-pause (game and music) if the phone locks or you switch apps
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { bgm.pause(); if (state === "play") togglePause(); }
+  else if (state !== "start") playMusic();
+});
 
 $("startBtn").addEventListener("click", startGame);
 $("replayBtn").addEventListener("click", startGame);
