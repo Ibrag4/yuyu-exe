@@ -1,47 +1,181 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#07091b" />
+    <meta name="description" content="a little something made for yuyu :)" />
+
     <title>YUYU.EXE</title>
-    <meta name="description" content="A tiny interactive birthday system for Yuyu." />
+
     <link rel="stylesheet" href="css/style.css" />
   </head>
+
   <body>
     <a class="skip-link" href="#desktop">Skip to desktop</a>
+
     <main class="app-shell">
-      <section class="startup-screen" id="startupScreen" aria-labelledby="startupTitle">
+      <!-- STARTUP SCREEN -->
+      <section
+        class="startup-screen"
+        id="startupScreen"
+        aria-labelledby="startupTitle"
+      >
         <div class="startup-card">
-          <p class="system-label">booting personal archive...</p>
-          <h1 id="startupTitle">YUYU.EXE</h1>
-          <p class="startup-line">I made a little something for you.</p>
-          <div class="user-guide" aria-label="a tiny user guide">
-            <h2>a tiny user guide</h2>
-            <p>01. Tap things. Be curious.</p>
-            <p>02. Some things are hiding.</p>
-            <p>03. There's no wrong way to explore.</p>
+          <p class="system-label">somewhere on your computer...</p>
+
+          <h1 id="startupTitle">YUYU.BIRTHDAY</h1>
+
+          <p class="startup-line">hi yuyu :)</p>
+
+          <p class="startup-description">i made you a little thing.</p>
+
+          <div class="user-guide">
+            <h2>a tiny guide, i guess</h2>
+
+            <p>01. click around a little</p>
+            <p>02. there are secrets somewhere</p>
+            <p>03. you can't really break anything</p>
           </div>
-          <button class="primary-button" id="startButton" type="button">LET'S EXPLORE</button>
-          <p class="small-caption">an unnecessarily elaborate birthday present</p>
+
+          <button class="primary-button" id="startButton" type="button">
+            LET'S GO
+          </button>
+
+          <p class="small-caption">yes, i actually made a whole website</p>
         </div>
       </section>
-      <section class="desktop-screen is-hidden" id="desktop" aria-label="YUYU.EXE desktop">
+
+      <!-- DESKTOP -->
+      <section
+        class="desktop-screen is-hidden"
+        id="desktop"
+        aria-label="YUYU.EXE desktop"
+        tabindex="-1"
+      >
         <header class="top-bar">
-          <div><p class="system-label">YUYU.EXE / desktop</p><h2>tiny archive</h2></div>
-          <div class="status-panel" aria-live="polite"><span id="progressText">0/3 files explored</span><span class="status-dot" id="unlockDot" aria-hidden="true"></span></div>
+          <div class="desktop-heading">
+            <p class="system-label">YUYU.EXE / desktop</p>
+            <h2>your little corner</h2>
+          </div>
+
+          <div class="status-panel" aria-live="polite">
+            <span id="progressText">0/3 files explored</span>
+            <span class="status-dot" id="unlockDot" aria-hidden="true"></span>
+          </div>
         </header>
-        <div class="desktop-grid" role="list" aria-label="folders">
-          <button class="folder-icon" type="button" data-folder="littleThings" role="listitem"><span class="folder-art" aria-hidden="true"></span><span class="folder-name">little_things</span></button>
-          <button class="folder-icon" type="button" data-folder="fieldTrip" role="listitem"><span class="folder-art folder-art--photo" aria-hidden="true"></span><span class="folder-name">field_trip</span></button>
-          <button class="folder-icon folder-icon--secret" type="button" data-folder="secretFolder" role="listitem"><span class="folder-art folder-art--secret" aria-hidden="true"></span><span class="folder-name">secret_folder</span></button>
-          <button class="folder-icon folder-icon--locked" type="button" data-folder="openLast" role="listitem" aria-disabled="true"><span class="folder-lock" aria-hidden="true"></span><span class="folder-art folder-art--last" aria-hidden="true"></span><span class="folder-name">open_me_last</span></button>
+
+        <!-- FOLDERS -->
+        <div class="desktop-grid" aria-label="Folders">
+          <button class="folder-icon" type="button" data-folder="littleThings">
+            <span class="folder-art" aria-hidden="true"></span>
+            <span class="folder-name">little_things</span>
+          </button>
+
+          <button class="folder-icon" type="button" data-folder="fieldTrip">
+            <span
+              class="folder-art folder-art--photo"
+              aria-hidden="true"
+            ></span>
+            <span class="folder-name">field_trip</span>
+          </button>
+
+          <button
+            class="folder-icon folder-icon--secret"
+            type="button"
+            data-folder="secretFolder"
+          >
+            <span
+              class="folder-art folder-art--secret"
+              aria-hidden="true"
+            ></span>
+            <span class="folder-name">secret_folder</span>
+          </button>
+
+          <button
+            class="folder-icon folder-icon--locked"
+            type="button"
+            data-folder="openLast"
+            aria-disabled="true"
+          >
+            <span class="folder-lock" aria-hidden="true"></span>
+
+            <span class="folder-art folder-art--last" aria-hidden="true"></span>
+
+            <span class="folder-name">open_me_last</span>
+          </button>
         </div>
-        <p class="desktop-message" id="desktopMessage" aria-live="polite">Choose a folder to begin.</p>
+
+        <!-- TINY CAT EASTER EGG -->
+        <button
+          class="desktop-cat"
+          id="desktopCat"
+          type="button"
+          aria-label="Tap the tiny cat"
+        >
+          <span class="pixel-cat" aria-hidden="true">
+            /\_/\ ( o.o ) > ^ <
+          </span>
+
+          <span class="cat-label">tiny_cat.exe</span>
+        </button>
+
+        <p class="cat-message" id="catMessage" aria-live="polite"></p>
+
+        <!-- SYSTEM MESSAGE -->
+        <p class="desktop-message" id="desktopMessage" aria-live="polite">
+          look around, take your time
+        </p>
+
+        <!-- OPEN WINDOWS -->
         <div class="window-layer" id="windowLayer" aria-live="polite"></div>
       </section>
     </main>
-    <template id="appWindowTemplate"><article class="app-window" role="dialog" aria-modal="false"><header class="window-titlebar"><h3></h3><button class="window-close" type="button" aria-label="Close window">x</button></header><div class="window-content"></div></article></template>
-    <template id="lightboxTemplate"><div class="lightbox" role="dialog" aria-modal="true"><button class="lightbox-close" type="button" aria-label="Close image">x</button><figure><img src="" alt="" /><figcaption></figcaption></figure></div></template>
+
+    <!-- WINDOW TEMPLATE -->
+    <template id="appWindowTemplate">
+      <article
+        class="app-window"
+        role="dialog"
+        aria-modal="false"
+        aria-labelledby="windowTitle"
+        tabindex="-1"
+      >
+        <header class="window-titlebar">
+          <h3 id="windowTitle"></h3>
+
+          <button class="window-close" type="button" aria-label="Close window">
+            ×
+          </button>
+        </header>
+
+        <div class="window-content"></div>
+      </article>
+    </template>
+
+    <!-- IMAGE VIEWER TEMPLATE -->
+    <template id="lightboxTemplate">
+      <div
+        class="lightbox"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Photo preview"
+      >
+        <button class="lightbox-close" type="button" aria-label="Close image">
+          ×
+        </button>
+
+        <figure>
+          <img src="" alt="" />
+
+          <figcaption></figcaption>
+        </figure>
+      </div>
+    </template>
+
     <script src="js/script.js"></script>
   </body>
 </html>
