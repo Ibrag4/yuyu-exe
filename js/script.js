@@ -7,7 +7,7 @@
    - message: the personal memory or message
    - caption: short text under the photo (can be "" to hide it)
    - image:   path to the photo. Put photos in assets/images/
-   The 5 gifts appear in the level in this order (1 = first one found).
+   The gifts show up in this order (first in the list = first one found).
    If an image is missing, a cute "Photo coming soon" box shows instead.
    ===================================================================== */
 const CONFIG = {
@@ -53,77 +53,38 @@ const CONFIG = {
 };
 
 /* =====================================================================
-   2. BASIC SETUP
+   2. GAME SETTINGS (change these numbers to make it easier or harder)
    ===================================================================== */
-const W = 800, H = 450;          // canvas size (the CSS scales it to fit the screen)
-const GY = 380;                  // ground height (y position of the floor)
-const LEVEL_W = 4000;            // total level length
-const GATE_X = 3450;             // gate that opens when all 5 gifts are found
-const CAKE_X = 3750;             // where the cake sits
+const W = 640, H = 320;      // canvas size (CSS scales it to any screen)
+const GY = 262;              // ground height
+const BASE_SPEED = 4.5;      // how fast Yuyu skates
+const GRAV = 0.75;           // gravity
+const JUMP = 13.5;           // jump power
+const FIRST_GIFT = 800;      // distance of the first gift
+const GIFT_GAP = 1300;       // distance between gifts
+const CAKE_GAP = 900;        // distance from the 5th gift to the cake
+const TOTAL = FIRST_GIFT + GIFT_GAP * 4 + CAKE_GAP;   // used by the progress bar
+
 const $ = (id) => document.getElementById(id);
 const canvas = $("game");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
 /* =====================================================================
-   3. LEVEL DATA
-   ===================================================================== */
-// Ramps (funboxes): walk up one side, over the top, and down the other.
-const ramps = [
-  { x: 400,  w: 150, h: 60 },
-  { x: 1250, w: 150, h: 60 },
-  { x: 2850, w: 160, h: 70 },
-  { x: 3150, w: 150, h: 60 }
-];
-// Platforms: rails (thin, with legs) and boxes. You can land on top from above.
-const platforms = [
-  { x: 700,  y: 315, w: 150, type: "rail" },
-  { x: 1000, y: 330, w: 70,  type: "box"  },
-  { x: 1450, y: 330, w: 70,  type: "box"  },
-  { x: 1520, y: 280, w: 70,  type: "box"  },
-  { x: 1800, y: 310, w: 200, type: "rail" },
-  { x: 2200, y: 300, w: 180, type: "rail" },
-  { x: 2450, y: 320, w: 70,  type: "box"  },
-  { x: 2550, y: 290, w: 160, type: "rail" }
-];
-// Where each of the 5 gifts floats (same order as CONFIG.gifts)
-const giftSpots = [
-  { x: 465, y: 285 }, { x: 760, y: 275 }, { x: 1545, y: 240 },
-  { x: 2280, y: 260 }, { x: 2918, y: 280 }
-];
-
-/* =====================================================================
-   4. GAME STATE
+   3. GAME STATE
    ===================================================================== */
 let state = "start";   // "start" | "play" | "paused" | "modal" | "end"
-let time = 0;
-let p, gifts, coins, coinCount, giftsFound;
-const keys = { left: false, right: false, jump: false };
-
-// Returns the floor height at horizontal position x (ground or ramp surface).
-function surfaceY(x) {
-  let y = GY;
-  for (const r of ramps) {
-    if (x >= r.x && x <= r.x + r.w) {
-      const slope = (r.w - 60) / 2;                       // length of each sloped side
-      const t = Math.min(1, Math.min(x - r.x, r.x + r.w - x) / slope);
-      y = Math.min(y, GY - r.h * t);
-    }
-  }
-  return y;
-}
+let time = 0, shake = 0, jumpBuf = 0;
+let p, dist, obstacles, coins, gift, cake, cakeAt, atCake;
+let giftsFound, coinCount, nextGiftAt, nextObAt;
 
 // Starts (or restarts) everything from the beginning.
 function resetGame() {
-  p = { x: 60, y: GY - 28, w: 20, h: 28, vx: 0, vy: 0, face: 1, onGround: true };
-  gifts = CONFIG.gifts.slice(0, 5).map((g, i) => ({ ...giftSpots[i], w: 24, h: 24, got: false, data: g }));
-  coins = [];
-  for (let x = 220; x < 3400; x += 130) coins.push({ x, y: surfaceY(x) - 45, w: 12, h: 12, got: false });
-  platforms.forEach((pl) => {
-    for (let i = 1; i <= 3; i++) coins.push({ x: pl.x + (pl.w * i) / 4 - 6, y: pl.y - 40, w: 12, h: 12, got: false });
-  });
-  coinCount = 0;
-  giftsFound = 0;
+  p = { x: 90, y: GY - 40, w: 22, h: 40, vy: 0, onGround: true, noCut: false, stumble: 0, inv: 0 };
+  dist = 0; obstacles = []; coins = []; gift = null; cake = null;
+  cakeAt = Infinity; atCake = false;
+  giftsFound = 0; coinCount = 0; nextGiftAt = FIRST_GIFT; nextObAt = 500;
+  jumpBuf = 0; shake = 0;
   updateHud();
 }
 
@@ -132,64 +93,95 @@ function overlap(a, b) {
 }
 
 /* =====================================================================
-   5. UPDATE: physics, collisions, collecting (runs every frame)
+   4. UPDATE: the world scrolls, Yuyu stays in place (like the Chrome dino)
    ===================================================================== */
+function spawnObstacle() {
+  const types = [
+    { t: "cone", w: 18, h: 26 },   // jump over
+    { t: "box",  w: 34, h: 30 },   // jump over
+    { t: "rail", w: 72, h: 22 },   // jump over
+    { t: "ramp", w: 64, h: 26 }    // ride it: launches you high!
+  ];
+  const o = { ...types[Math.floor(Math.random() * types.length)], x: W + 20, used: false };
+  obstacles.push(o);
+  if (o.t === "ramp") {   // stars in the air after a ramp
+    for (let i = 0; i < 3; i++) coins.push({ x: o.x + o.w + 40 + i * 30, y: GY - 120 - (i === 1 ? 10 : 0), w: 12, h: 12, got: false });
+  } else {                // a little arc of stars above the obstacle shows when to jump
+    [[-26, 50], [0, 64], [26, 50]].forEach(([dx, h]) =>
+      coins.push({ x: o.x + o.w / 2 + dx - 6, y: GY - o.h - h, w: 12, h: 12, got: false }));
+  }
+}
+
 function update(s) {
-  // Horizontal movement
-  const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-  p.vx = dir * 3.2;
-  if (dir) p.face = dir;
-  p.x += p.vx * s;
-  p.x = Math.max(0, Math.min(LEVEL_W - p.w, p.x));
+  // Speed: half speed for a moment after a stumble, zero while walking to the cake
+  const speed = atCake ? 0 : BASE_SPEED * (p.stumble > 0 ? 0.5 : 1);
+  const dx = speed * s;
+  dist += dx;
+  if (p.stumble > 0) p.stumble -= s;
+  if (p.inv > 0) p.inv -= s;
+  if (shake > 0) shake -= s;
 
-  // The gate blocks the way until all 5 gifts are found
-  if (giftsFound < 5 && p.x + p.w > GATE_X) {
-    p.x = GATE_X - p.w;
-    toast("Find all 5 gifts to open the gate! 🎁");
+  // Jump (a tap a few frames early still counts) and gravity
+  if (jumpBuf > 0) {
+    jumpBuf -= s;
+    if (p.onGround) { p.vy = -JUMP; p.onGround = false; p.noCut = false; jumpBuf = 0; }
   }
-
-  // Jump and gravity
-  const wasGround = p.onGround;
-  if (keys.jump && p.onGround) { p.vy = -12.5; p.onGround = false; }
-  p.vy = Math.min(p.vy + 0.62 * s, 14);
-  const prevFeet = p.y + p.h;
+  p.vy += GRAV * s;
   p.y += p.vy * s;
+  if (p.y >= GY - p.h) { p.y = GY - p.h; p.vy = 0; p.onGround = true; p.noCut = false; }
+  else p.onGround = false;
 
-  // Landing on the ground / ramps
-  const feet = p.y + p.h;
-  const cx = p.x + p.w / 2;
-  const gy = surfaceY(cx);
-  p.onGround = false;
-  if (feet >= gy || (wasGround && p.vy >= 0 && gy - feet <= 6)) {
-    p.y = gy - p.h; p.vy = 0; p.onGround = true;   // "stick" to the floor going downhill too
-  }
+  // Scroll everything to the left
+  obstacles.forEach((o) => (o.x -= dx));
+  coins.forEach((c) => (c.x -= dx));
+  if (gift) gift.x -= dx;
+  if (cake) cake.x -= dx;
+  obstacles = obstacles.filter((o) => o.x + o.w > -20);
+  coins = coins.filter((c) => !c.got && c.x > -20);
 
-  // Landing on rails and boxes (only when falling from above)
-  if (!p.onGround && p.vy >= 0) {
-    for (const pl of platforms) {
-      if (cx > pl.x - 4 && cx < pl.x + pl.w + 4 && prevFeet <= pl.y + 2 && p.y + p.h >= pl.y) {
-        p.y = pl.y - p.h; p.vy = 0; p.onGround = true;
-        break;
-      }
+  // Spawn obstacles, the next gift and finally the cake
+  const lastStretch = giftsFound >= 5 && dist >= cakeAt - 300;   // clear path to the cake
+  if (!lastStretch && dist >= nextObAt) { spawnObstacle(); nextObAt = dist + 380 + Math.random() * 260; }
+  if (!gift && giftsFound < 5 && dist >= nextGiftAt)
+    gift = { x: W + 20, y: GY - 100, w: 24, h: 24, data: CONFIG.gifts[giftsFound] };
+  if (gift && gift.x < -40) { gift = null; nextGiftAt = dist + 500; }   // missed it? it comes back
+  if (!cake && giftsFound >= 5 && dist >= cakeAt) cake = { x: W + 20, y: GY - 45, w: 50, h: 45 };
+
+  // Collisions (the hitbox is a bit smaller than the drawing = friendlier)
+  const hb = { x: p.x + 4, y: p.y + 4, w: p.w - 8, h: p.h - 4 };
+  for (const o of obstacles) {
+    if (!overlap(hb, { x: o.x + 2, y: GY - o.h, w: o.w - 4, h: o.h })) continue;
+    if (o.t === "ramp") {
+      if (!o.used) { o.used = true; p.vy = -15.5; p.onGround = false; p.noCut = true; }
+    } else if (p.inv <= 0) {
+      p.inv = 70; p.stumble = 40; p.vy = -6; p.onGround = false; shake = 8;   // oops! no game over
+      toast("Oops! 🙈");
     }
   }
+  for (const c of coins) if (!c.got && overlap(hb, c)) { c.got = true; coinCount++; updateHud(); }
 
-  // Collect stars
-  for (const c of coins) {
-    if (!c.got && overlap(p, c)) { c.got = true; coinCount++; updateHud(); }
+  // Gift collected -> open the popup
+  if (gift && overlap(hb, gift)) {
+    const data = gift.data;
+    gift = null; giftsFound++;
+    nextGiftAt = dist + GIFT_GAP;
+    if (giftsFound === 5) cakeAt = dist + CAKE_GAP;
+    p.inv = 60;
+    updateHud(); openGift(data);
+    return;
   }
-  // Collect gifts (opens the popup)
-  gifts.forEach((g) => {
-    if (!g.got && state === "play" && overlap(p, g)) {
-      g.got = true; giftsFound++; updateHud(); openGift(g.data);
+
+  // Cake: the world stops and Yuyu walks up to it
+  if (cake) {
+    if (!atCake && cake.x - (p.x + p.w) <= 110) atCake = true;
+    if (atCake) {
+      p.x += 2.5 * s;
+      if (overlap(p, cake)) { startFinale(); return; }
     }
-  });
-  // Collect the cake (only after all 5 gifts)
-  const cake = { x: CAKE_X, y: GY - 45, w: 50, h: 45 };
-  if (state === "play" && giftsFound >= 5 && overlap(p, cake)) startFinale();
+  }
 
   // Progress bar
-  const pct = Math.min(100, Math.round((p.x / CAKE_X) * 100));
+  const pct = atCake ? 100 : Math.round(Math.min(giftsFound < 5 ? 0.95 : 1, dist / TOTAL) * 100);
   $("progressBar").style.width = pct + "%";
   $("progressWrap").setAttribute("aria-valuenow", pct);
 }
@@ -202,17 +194,17 @@ function updateHud() {
 let toastTimer;
 function toast(msg) {
   const t = $("toast");
-  t.textContent = msg;
-  t.classList.add("show");
+  t.textContent = msg; t.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1200);
 }
 
 /* =====================================================================
-   6. GIFT POPUP (with a cute fallback if the photo is missing)
+   5. GIFT POPUP (with a cute fallback if the photo is missing)
    ===================================================================== */
 function openGift(g) {
   state = "modal";
+  jumpBuf = 0;
   $("giftTitle").textContent = g.title || "A gift!";
   $("giftMessage").textContent = g.message || "";
   $("giftCaption").textContent = g.caption || "";
@@ -221,7 +213,7 @@ function openGift(g) {
   const img = $("giftImg"), fb = $("giftFallback");
   const showFallback = () => { img.classList.add("hidden"); fb.classList.remove("hidden"); };
   img.classList.remove("hidden"); fb.classList.add("hidden");
-  img.onerror = showFallback;                  // image missing -> show the fallback box
+  img.onerror = showFallback;                       // missing image -> fallback box
   if (g.image) img.src = g.image; else showFallback();
 
   $("giftModal").classList.remove("hidden");
@@ -231,11 +223,11 @@ function openGift(g) {
 function closeGift() {
   $("giftModal").classList.add("hidden");
   state = "play";
-  if (giftsFound === 5) toast("The gate is open! Find the cake 🎂");
+  if (giftsFound === 5) toast("All gifts found! Cake time 🎂");
 }
 
 /* =====================================================================
-   7. BIRTHDAY FINALE: cake, sparkles and confetti
+   6. BIRTHDAY FINALE: cake, sparkles and confetti
    ===================================================================== */
 const cakeCtx = $("cakeCanvas").getContext("2d");
 const confCanvas = $("confetti"), confCtx = confCanvas.getContext("2d");
@@ -250,7 +242,7 @@ function startFinale() {
   confCanvas.width = window.innerWidth;
   confCanvas.height = window.innerHeight;
   confetti = [];
-  for (let i = 0; i < 160; i++) confetti.push(newConfetti(true));
+  for (let i = 0; i < 140; i++) confetti.push(newConfetti(true));
   $("finale").classList.remove("hidden");
   $("replayBtn").focus();
   finaleOn = true;
@@ -269,14 +261,11 @@ function newConfetti(randomY) {
 
 function finaleLoop() {
   if (!finaleOn) return;
-  // Cake + sparkles
   cakeCtx.clearRect(0, 0, 160, 120);
   drawCake(cakeCtx, 16, 24, 8);
   for (let i = 0; i < 8; i++) {
-    const on = Math.floor(time * 4 + i) % 3 === 0;
-    if (on) sparkle(cakeCtx, 10 + ((i * 47) % 140), 8 + ((i * 29) % 100), 3);
+    if (Math.floor(time * 4 + i) % 3 === 0) sparkle(cakeCtx, 10 + ((i * 47) % 140), 8 + ((i * 29) % 100), 3);
   }
-  // Confetti
   confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
   confetti.forEach((c, i) => {
     c.x += c.vx; c.y += c.vy;
@@ -288,9 +277,9 @@ function finaleLoop() {
 }
 
 /* =====================================================================
-   8. DRAWING (all pixel art is made from small rectangles)
+   7. DRAWING (all pixel art is made from small rectangles)
    ===================================================================== */
-// Yuyu: 10x14 pixel grid. Letters are colors from PAL; "." is transparent.
+// Yuyu: 10x14 pixel grid, drawn 3x bigger. Letters are colors from PAL.
 const SPRITE = [
   "..hhhhhbb.",
   ".hhhhhhhh.",
@@ -309,16 +298,7 @@ const SPRITE = [
 ];
 const PAL = { h: "#5b3a6e", s: "#ffd9b8", e: "#2b1b3a", p: "#ff9ec4", P: "#ff9ec4", c: "#8fe3c8", n: "#6c8cff", k: "#ffffff", b: "#ff6fa5" };
 
-function drawSprite(rows, x, y, scale, flip) {
-  rows.forEach((row, r) => {
-    for (let c = 0; c < row.length; c++) {
-      const ch = row[flip ? row.length - 1 - c : c];
-      if (ch !== ".") { ctx.fillStyle = PAL[ch]; ctx.fillRect(x + c * scale, y + r * scale, scale, scale); }
-    }
-  });
-}
-
-function rect(c, x, y, w, h, color) { c.fillStyle = color; c.fillRect(x, y, w, h); }
+function rect(c, x, y, w, h, color) { c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), w, h); }
 
 function sparkle(c, x, y, s) {
   rect(c, x, y - s, s, s * 3, "#fff6a8");
@@ -328,121 +308,109 @@ function sparkle(c, x, y, s) {
 // Pixel cake (used in the level AND on the finale screen). s = pixel size.
 function drawCake(c, x, y, s) {
   const u = (a, b, w, h, col) => rect(c, x + a * s, y + b * s, w * s, h * s, col);
-  u(-1, 14, 18, 1, "#ffffff");           // plate
-  u(0, 8, 16, 6, "#ff9ec4");             // bottom layer
-  u(0, 8, 16, 1, "#ffffff");
-  [2, 7, 12].forEach((a) => u(a, 9, 1, 2, "#ffffff"));   // frosting drips
-  u(3, 3, 10, 5, "#fff1c9");             // top layer
-  u(3, 3, 10, 1, "#ffffff");
+  u(-1, 14, 18, 1, "#ffffff");                              // plate
+  u(0, 8, 16, 6, "#ff9ec4"); u(0, 8, 16, 1, "#ffffff");     // bottom layer
+  [2, 7, 12].forEach((a) => u(a, 9, 1, 2, "#ffffff"));      // frosting drips
+  u(3, 3, 10, 5, "#fff1c9"); u(3, 3, 10, 1, "#ffffff");     // top layer
   const flicker = Math.floor(time * 6) % 2;
   [["#6c8cff", 5], ["#ffd34d", 8], ["#8fe3c8", 11]].forEach(([col, a]) => {
-    u(a, 0, 1, 3, col);                  // candle
-    u(a, flicker ? -2 : -1, 1, flicker ? 2 : 1, "#ffb347");   // flame
+    u(a, 0, 1, 3, col);                                     // candle
+    u(a, flicker ? -2 : -1, 1, flicker ? 2 : 1, "#ffb347"); // flame
   });
 }
 
-function drawBackground(cam) {
+function drawBackground() {
   const g = ctx.createLinearGradient(0, 0, 0, GY);
   g.addColorStop(0, "#bde7ff"); g.addColorStop(1, "#ffe3f1");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  rect(ctx, 650, 40, 50, 50, "#fff3a0");                       // sun
-  for (let i = 0; i < 9; i++) {                                // slow clouds
-    const cx = ((((i * 300 - cam * 0.25 - time * 6) % 2700) + 2700) % 2700) - 200;
-    rect(ctx, cx, 60 + (i % 3) * 40, 70, 16, "#fff");
-    rect(ctx, cx + 14, 48 + (i % 3) * 40, 40, 14, "#fff");
+  rect(ctx, 540, 30, 40, 40, "#fff3a0");                                   // sun
+  for (let i = 0; i < 6; i++) {                                            // clouds
+    const cx = ((((i * 230 - dist * 0.15 - time * 5) % 1400) + 1400) % 1400) - 120;
+    rect(ctx, cx, 40 + (i % 3) * 32, 60, 14, "#fff");
+    rect(ctx, cx + 12, 30 + (i % 3) * 32, 34, 12, "#fff");
   }
-  for (let x = 0; x < W; x += 20) {                            // pixel hills
-    const h = Math.round((50 + 30 * Math.sin((x + cam * 0.5) / 90)) / 10) * 10;
-    rect(ctx, x, GY - h, 20, h, "#c9f0d8");
+  for (let x = 0; x < W; x += 16) {                                        // pixel hills
+    const h = Math.round((40 + 26 * Math.sin((x + dist * 0.3) / 70)) / 8) * 8;
+    rect(ctx, x, GY - h, 16, h, "#c9f0d8");
+  }
+  rect(ctx, 0, GY, W, H - GY, "#b88be0");                                  // ground
+  rect(ctx, 0, GY, W, 6, "#8fe3c8");
+  for (let x = -(dist % 40); x < W; x += 40) rect(ctx, x, GY + 20, 18, 4, "#a174cf");
+}
+
+function drawObstacle(o) {
+  const top = GY - o.h;
+  if (o.t === "cone") {
+    ctx.fillStyle = "#ff9a3c";
+    ctx.beginPath(); ctx.moveTo(o.x, GY); ctx.lineTo(o.x + o.w, GY); ctx.lineTo(o.x + o.w / 2, top); ctx.fill();
+    rect(ctx, o.x + 4, GY - 12, o.w - 8, 4, "#fff");
+    rect(ctx, o.x - 2, GY - 3, o.w + 4, 3, "#e57f22");
+  } else if (o.t === "box") {
+    rect(ctx, o.x, top, o.w, o.h, "#4a3560");
+    rect(ctx, o.x + 3, top + 3, o.w - 6, o.h - 3, "#ff9ec4");
+    rect(ctx, o.x + 3, top + 3, o.w - 6, 4, "#ffd1e3");
+  } else if (o.t === "rail") {
+    rect(ctx, o.x + 6, top, 4, o.h, "#8a8fa8");
+    rect(ctx, o.x + o.w - 10, top, 4, o.h, "#8a8fa8");
+    rect(ctx, o.x, top, o.w, 5, "#d5dbef");
+    rect(ctx, o.x, top, o.w, 2, "#ffffff");
+  } else {   // ramp: a wedge that rises to the right
+    ctx.fillStyle = "#e9b872";
+    ctx.beginPath(); ctx.moveTo(o.x, GY); ctx.lineTo(o.x + o.w, GY); ctx.lineTo(o.x + o.w, top); ctx.fill();
+    rect(ctx, o.x + o.w - 4, top, 4, o.h, "#fff");
   }
 }
 
 function draw() {
-  const cam = Math.max(0, Math.min(LEVEL_W - W, p.x + p.w / 2 - W / 2));
-  drawBackground(cam);
   ctx.save();
-  ctx.translate(-Math.round(cam), 0);
+  if (shake > 0) ctx.translate(Math.round(Math.random() * 4 - 2), Math.round(Math.random() * 4 - 2));
+  drawBackground();
 
-  // Ground
-  rect(ctx, cam, GY, W + 20, H - GY, "#b88be0");
-  rect(ctx, cam, GY, W + 20, 8, "#8fe3c8");
-  for (let x = Math.floor(cam / 40) * 40; x < cam + W + 40; x += 40) rect(ctx, x, GY + 24, 20, 4, "#a174cf");
+  obstacles.forEach(drawObstacle);
 
-  // Ramps
-  ramps.forEach((r) => {
-    const s = (r.w - 60) / 2;
-    ctx.fillStyle = "#e9b872";
-    ctx.beginPath();
-    ctx.moveTo(r.x, GY); ctx.lineTo(r.x + s, GY - r.h);
-    ctx.lineTo(r.x + r.w - s, GY - r.h); ctx.lineTo(r.x + r.w, GY);
-    ctx.fill();
-    rect(ctx, r.x + s, GY - r.h, 60, 4, "#ffffff");           // metal coping on top
+  coins.forEach((c) => {                                       // stars
+    const b = Math.round(Math.sin(time * 6 + c.x / 20) * 2);
+    rect(ctx, c.x + 4, c.y + b, 4, 12, "#ffd34d");
+    rect(ctx, c.x, c.y + 4 + b, 12, 4, "#ffd34d");
   });
 
-  // Rails and boxes
-  platforms.forEach((pl) => {
-    if (pl.type === "rail") {
-      rect(ctx, pl.x + 8, pl.y, 4, GY - pl.y, "#8a8fa8");
-      rect(ctx, pl.x + pl.w - 12, pl.y, 4, GY - pl.y, "#8a8fa8");
-      rect(ctx, pl.x, pl.y, pl.w, 5, "#d5dbef");
-      rect(ctx, pl.x, pl.y, pl.w, 2, "#ffffff");
-    } else {
-      rect(ctx, pl.x, pl.y, pl.w, GY - pl.y, "#4a3560");
-      rect(ctx, pl.x + 3, pl.y + 3, pl.w - 6, GY - pl.y - 3, "#ff9ec4");
-      rect(ctx, pl.x + 3, pl.y + 3, pl.w - 6, 4, "#ffd1e3");
-    }
-  });
-
-  // Gate (closed until all 5 gifts are found)
-  rect(ctx, GATE_X, GY - 90, 8, 90, "#4a3560");
-  rect(ctx, GATE_X + 40, GY - 90, 8, 90, "#4a3560");
-  if (giftsFound < 5) {
-    for (let i = 0; i < 4; i++) rect(ctx, GATE_X + 8, GY - 80 + i * 20, 32, 6, "#ff6fa5");
-    ctx.fillStyle = "#4a3560"; ctx.font = "bold 14px 'Courier New', monospace";
-    ctx.fillText("🎁 " + giftsFound + "/5", GATE_X - 4, GY - 100);
+  if (gift) {                                                  // gift box
+    const y = gift.y + Math.round(Math.sin(time * 4) * 3);
+    rect(ctx, gift.x, y, 24, 24, "#4a3560");
+    rect(ctx, gift.x + 2, y + 2, 20, 20, "#ff6fa5");
+    rect(ctx, gift.x + 10, y, 4, 24, "#fff");
+    rect(ctx, gift.x, y + 10, 24, 4, "#fff");
+    rect(ctx, gift.x + 4, y - 6, 6, 6, "#ffd34d"); rect(ctx, gift.x + 14, y - 6, 6, 6, "#ffd34d");
+    if (Math.floor(time * 4) % 2) sparkle(ctx, gift.x + 30, y - 8, 2);
   }
 
-  // Stars
-  coins.forEach((c) => {
-    if (c.got) return;
-    const bob = Math.round(Math.sin(time * 4 + c.x) * 2);
-    rect(ctx, c.x + 4, c.y + bob, 4, 12, "#ffd34d");
-    rect(ctx, c.x, c.y + 4 + bob, 12, 4, "#ffd34d");
-  });
+  if (cake) {
+    drawCake(ctx, cake.x, cake.y, 3);
+    if (Math.floor(time * 3) % 2) sparkle(ctx, cake.x + 58, cake.y - 6, 3);
+  }
 
-  // Gifts
-  gifts.forEach((g) => {
-    if (g.got) return;
-    const y = g.y + Math.round(Math.sin(time * 3 + g.x) * 3);
-    rect(ctx, g.x, y, 24, 24, "#4a3560");
-    rect(ctx, g.x + 2, y + 2, 20, 20, "#ff6fa5");
-    rect(ctx, g.x + 10, y, 4, 24, "#fff");
-    rect(ctx, g.x, y + 10, 24, 4, "#fff");
-    rect(ctx, g.x + 4, y - 6, 6, 6, "#ffd34d"); rect(ctx, g.x + 14, y - 6, 6, 6, "#ffd34d");
-  });
-
-  // Cake (faded until the gate opens)
-  ctx.globalAlpha = giftsFound >= 5 ? 1 : 0.35;
-  drawCake(ctx, CAKE_X, GY - 45, 3);
-  ctx.globalAlpha = 1;
-  if (giftsFound >= 5 && Math.floor(time * 3) % 2) sparkle(ctx, CAKE_X + 60, GY - 60, 3);
-
-  // Player (with skateboard)
-  const px = Math.round(p.x), py = Math.round(p.y);
-  drawSprite(SPRITE, px, py - 4, 2, p.face < 0);
-  rect(ctx, px - 4, py + p.h - 5, 28, 3, "#7a4bd1");
-  rect(ctx, px, py + p.h - 2, 4, 3, "#fff");
-  rect(ctx, px + 16, py + p.h - 2, 4, 3, "#fff");
-
+  // Yuyu on her skateboard (blinks after a stumble)
+  if (!(p.inv > 0 && Math.floor(p.inv / 5) % 2)) {
+    const feet = p.y + p.h;
+    const bob = p.onGround && !atCake ? Math.floor(time * 12) % 2 : 0;
+    const sx = p.x - 4, sy = feet - 46 + bob;
+    SPRITE.forEach((row, r) => {
+      for (let c = 0; c < row.length; c++)
+        if (row[c] !== ".") rect(ctx, sx + c * 3, sy + r * 3, 3, 3, PAL[row[c]]);
+    });
+    rect(ctx, p.x - 6, feet - 5, 34, 3, "#7a4bd1");            // board
+    rect(ctx, p.x, feet - 2, 5, 3, "#fff");                    // wheels
+    rect(ctx, p.x + 17, feet - 2, 5, 3, "#fff");
+  }
   ctx.restore();
 }
 
 /* =====================================================================
-   9. GAME LOOP
+   8. GAME LOOP
    ===================================================================== */
 let last = 0;
 function loop(now) {
-  const s = Math.min((now - last) / 16.67, 2.5) || 1;   // keeps speed steady on any screen
+  const s = Math.min((now - last) / 16.67, 2.5) || 1;   // same speed on any phone or screen
   last = now;
   time = now / 1000;
   if (state === "play") update(s);
@@ -451,7 +419,7 @@ function loop(now) {
 }
 
 /* =====================================================================
-   10. CONTROLS: keyboard, touch and buttons
+   9. CONTROLS: tap anywhere, keyboard and buttons
    ===================================================================== */
 function startGame() {
   resetGame();
@@ -465,35 +433,37 @@ function togglePause() {
   else if (state === "paused") { state = "play"; $("pauseScreen").classList.add("hidden"); }
 }
 
+function pressJump() { if (state === "play") jumpBuf = 8; }
+function releaseJump() {                      // letting go early = shorter hop (like the dino)
+  if (state === "play" && !p.noCut && p.vy < -7) p.vy = -7;
+}
+
+// Touch / mouse: press anywhere on the game area to jump (the top bar keeps its own buttons)
+$("app").addEventListener("pointerdown", (e) => {
+  if (e.target.closest("#hud")) return;
+  e.preventDefault();
+  pressJump();
+});
+window.addEventListener("pointerup", releaseJump);
+window.addEventListener("pointercancel", releaseJump);
+
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
-  if (["arrowleft", "arrowright", "arrowup", " "].includes(k) && state === "play") e.preventDefault();
-  if (k === "arrowleft" || k === "a") keys.left = true;
-  if (k === "arrowright" || k === "d") keys.right = true;
-  if (k === "arrowup" || k === "w" || k === " ") keys.jump = true;
+  if (k === "arrowup" || k === "w" || k === " ") {
+    if (state === "play") e.preventDefault();
+    if (!e.repeat) pressJump();
+  }
   if (k === "p") togglePause();
   if (k === "r" && state !== "start") startGame();
   if (k === "escape" && state === "modal") closeGift();
 });
 window.addEventListener("keyup", (e) => {
   const k = e.key.toLowerCase();
-  if (k === "arrowleft" || k === "a") keys.left = false;
-  if (k === "arrowright" || k === "d") keys.right = false;
-  if (k === "arrowup" || k === "w" || k === " ") keys.jump = false;
+  if (k === "arrowup" || k === "w" || k === " ") releaseJump();
 });
 
-// Hold-to-press touch buttons
-function holdButton(id, key) {
-  const el = $(id);
-  const on = (e) => { e.preventDefault(); keys[key] = true; };
-  const off = (e) => { e.preventDefault(); keys[key] = false; };
-  el.addEventListener("pointerdown", on);
-  ["pointerup", "pointercancel", "pointerleave"].forEach((ev) => el.addEventListener(ev, off));
-  el.addEventListener("contextmenu", (e) => e.preventDefault());
-}
-holdButton("btnLeft", "left");
-holdButton("btnRight", "right");
-holdButton("btnJump", "jump");
+// Auto-pause if the phone locks or you switch apps
+document.addEventListener("visibilitychange", () => { if (document.hidden && state === "play") togglePause(); });
 
 $("startBtn").addEventListener("click", startGame);
 $("replayBtn").addEventListener("click", startGame);
@@ -502,6 +472,6 @@ $("pauseBtn").addEventListener("click", (e) => { e.currentTarget.blur(); toggleP
 $("resumeBtn").addEventListener("click", togglePause);
 $("giftClose").addEventListener("click", closeGift);
 
-// Start: build the level and begin drawing (the game waits on the start screen)
+// Build the first scene and begin drawing (the game waits on the start screen)
 resetGame();
 requestAnimationFrame(loop);

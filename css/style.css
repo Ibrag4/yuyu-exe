@@ -11,81 +11,99 @@
 * { box-sizing: border-box; }
 
 html, body {
-  margin: 0;
-  min-height: 100%;
-  background: var(--ink);
-  color: var(--ink);
+  margin: 0; height: 100%;
+  overflow: hidden;                 /* no page scrolling while playing */
+  overscroll-behavior: none;
+  background: var(--ink); color: var(--ink);
   font-family: "Courier New", monospace;
   -webkit-tap-highlight-color: transparent;
 }
-
-body { display: flex; justify-content: center; }
-#app { width: min(100%, 960px); padding: 8px; }
 .hidden { display: none !important; }
 
-/* ===== Top bar ===== */
+/* ===== Layout: top bar, game screen, big jump area ===== */
+#app {
+  width: min(100%, 960px); margin: 0 auto;
+  height: 100vh; height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+           max(10px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  touch-action: none;               /* stops zoom/scroll gestures on the game */
+  user-select: none; -webkit-user-select: none;
+}
+
 #hud {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  background: var(--cream); border: 4px solid var(--ink);
-  box-shadow: 4px 4px 0 var(--shadow);
-  padding: 6px 10px; margin-bottom: 10px;
+  flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--cream); border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--shadow);
+  padding: 5px 8px; margin-bottom: 10px;
   font-weight: bold; font-size: 14px;
 }
 .hud-title { color: var(--hot); }
-#progressWrap {
-  flex: 1; min-width: 90px; height: 16px;
-  border: 3px solid var(--ink); background: #fff;
-}
+#progressWrap { flex: 1; min-width: 70px; height: 14px; border: 3px solid var(--ink); background: #fff; }
 #progressBar { width: 0; height: 100%; background: var(--hot); transition: width .1s; }
+@media (max-width: 480px) { .hud-title { display: none; } }
+
+/* The canvas keeps a 2:1 shape and always fits the screen (portrait or landscape) */
+#stage {
+  flex: none; position: relative; margin: 0 auto;
+  width: min(100%, calc((100vh - 140px) * 2));
+  width: min(100%, calc((100dvh - 140px) * 2));
+  aspect-ratio: 2 / 1;
+}
+#game {
+  display: block; width: 100%; height: 100%;
+  image-rendering: pixelated;
+  border: 3px solid var(--ink); background: #bde7ff;
+  box-shadow: 0 0 0 3px var(--lav);
+}
+#toast {
+  position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
+  background: var(--cream); border: 3px solid var(--ink);
+  padding: 4px 10px; font-size: 12px; font-weight: bold; text-align: center;
+  opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+
+/* Big jump area under the game (portrait phones) */
+#jumpBtn {
+  flex: 1; min-height: 80px; max-height: 240px; margin-top: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--pink); border: 4px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  font-size: clamp(20px, 6vw, 30px); font-weight: bold;
+}
+#jumpBtn:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+
+/* Short landscape phones: hide the big button, the whole screen is the button */
+@media (max-height: 500px) {
+  #jumpBtn { display: none; }
+  #stage { width: min(100%, calc((100vh - 70px) * 2)); width: min(100%, calc((100dvh - 70px) * 2)); }
+}
 
 /* ===== Pixel buttons ===== */
 .px-btn {
   font: inherit; font-weight: bold; color: var(--ink);
   background: var(--pink); border: 3px solid var(--ink);
   box-shadow: 3px 3px 0 var(--ink);
-  padding: 6px 12px; cursor: pointer;
-  user-select: none; -webkit-user-select: none; touch-action: none;
+  padding: 6px 12px; min-width: 44px; min-height: 40px; cursor: pointer;
 }
 .px-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 .px-btn:focus-visible { outline: 3px dashed var(--hot); outline-offset: 3px; }
-.px-btn.big { font-size: 18px; padding: 10px 20px; margin-top: 8px; }
-
-/* ===== Game screen ===== */
-#stage { position: relative; }
-#game {
-  display: block; width: 100%; aspect-ratio: 16 / 9;
-  image-rendering: pixelated;
-  border: 4px solid var(--ink); background: #bde7ff;
-  box-shadow: 0 0 0 4px var(--lav);
-}
-#toast {
-  position: absolute; left: 50%; top: 12px; transform: translateX(-50%);
-  background: var(--cream); border: 3px solid var(--ink);
-  padding: 6px 12px; font-size: 13px; font-weight: bold;
-  opacity: 0; transition: opacity .2s; pointer-events: none; text-align: center;
-}
-#toast.show { opacity: 1; }
-
-/* ===== Touch controls ===== */
-#touch { display: none; justify-content: space-between; margin-top: 14px; }
-#touch .px-btn { width: 76px; height: 76px; font-size: 28px; margin-right: 8px; }
-#touch > .px-btn { margin-right: 0; }
-@media (pointer: coarse) { #touch { display: flex; } }
+.px-btn.big { font-size: 18px; padding: 12px 22px; margin-top: 8px; }
 
 /* ===== Popups ===== */
 .overlay {
   position: fixed; inset: 0; z-index: 10;
   display: flex; justify-content: center; align-items: center;
   padding: 12px; overflow: auto;
-  background: rgba(74, 53, 96, .8);
+  background: rgba(74, 53, 96, .82);
 }
 .card {
   position: relative; z-index: 2;
-  width: 100%; max-width: 440px; text-align: center;
+  width: 100%; max-width: 440px; text-align: center; margin: auto;
   background: var(--cream); border: 4px solid var(--ink);
   box-shadow: 6px 6px 0 var(--hot);
-  padding: 18px; margin: auto;
-  animation: pop .3s steps(4);
+  padding: 16px; animation: pop .3s steps(4);
 }
 .card p { margin: 8px 0; line-height: 1.4; }
 .small { font-size: 13px; }
@@ -98,25 +116,19 @@ body { display: flex; justify-content: center; }
 .small-title { font-size: clamp(22px, 6vw, 30px); }
 
 #giftImg {
-  display: block; width: 100%; max-height: 38vh; object-fit: cover;
+  display: block; width: 100%; max-height: 32vh; object-fit: cover;
   border: 4px solid var(--ink); background: #fff;
 }
 .fallback {
-  height: 150px; display: flex; flex-direction: column;
+  height: 140px; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   border: 4px dashed var(--lav); background: #fff; font-size: 44px;
 }
 .fallback small { font-size: 13px; }
 
-#cakeCanvas { width: min(100%, 300px); image-rendering: pixelated; }
-#confetti {
-  position: fixed; inset: 0; width: 100%; height: 100%;
-  z-index: 1; pointer-events: none;
-}
+#cakeCanvas { width: min(70%, 260px); image-rendering: pixelated; }
+#confetti { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
 
 @keyframes pop { from { transform: scale(.6); } to { transform: scale(1); } }
 @keyframes bob { 50% { transform: translateY(-4px); } }
-
-@media (prefers-reduced-motion: reduce) {
-  .card, .title { animation: none; }
-}
+@media (prefers-reduced-motion: reduce) { .card, .title { animation: none; } }

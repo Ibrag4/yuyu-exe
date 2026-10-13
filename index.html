@@ -2,47 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#4a3560">
   <title>YUYU.EXE</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <main id="app">
 
-  <!-- Top bar: gifts, coins, progress, pause, restart -->
+  <!-- Top bar: gifts, stars, progress, pause, restart -->
   <header id="hud">
     <span class="hud-title">YUYU.EXE</span>
     <span id="giftCount" aria-live="polite">🎁 0/5</span>
     <span id="coinCount" aria-label="Stars collected">⭐ 0</span>
-    <div id="progressWrap" role="progressbar" aria-label="Level progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div id="progressWrap" role="progressbar" aria-label="Progress to the cake" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
       <div id="progressBar"></div>
     </div>
     <button id="pauseBtn" class="px-btn" aria-label="Pause game">⏸</button>
     <button id="restartBtn" class="px-btn" aria-label="Restart game">↻</button>
   </header>
 
-  <!-- Game screen -->
+  <!-- Game screen: tap anywhere on the screen to jump -->
   <div id="stage">
-    <canvas id="game" width="800" height="450" role="img" aria-label="YUYU.EXE game screen"></canvas>
+    <canvas id="game" width="640" height="320" role="img" aria-label="YUYU.EXE game screen"></canvas>
     <div id="toast" aria-live="polite"></div>
   </div>
 
-  <!-- Touch controls (only shown on touch screens) -->
-  <div id="touch">
-    <div>
-      <button id="btnLeft" class="px-btn" aria-label="Move left">◀</button>
-      <button id="btnRight" class="px-btn" aria-label="Move right">▶</button>
-    </div>
-    <button id="btnJump" class="px-btn" aria-label="Jump">▲</button>
-  </div>
+  <!-- Big visual jump area (the whole screen already works as a jump button) -->
+  <div id="jumpBtn" aria-hidden="true">▲ TAP TO JUMP</div>
 </main>
 
 <!-- Start screen -->
 <section id="startScreen" class="overlay">
   <div class="card">
     <h1 class="title">YUYU.EXE</h1>
-    <p>A tiny birthday adventure. Skate, jump, and find 5 gifts!</p>
-    <p class="small">Move: ← → or A D &nbsp;|&nbsp; Jump: Space / ↑ / W<br>Pause: P &nbsp;|&nbsp; Restart: R</p>
+    <p>A tiny birthday adventure. Skate, jump over obstacles and find 5 gifts!</p>
+    <p class="small">📱 Tap the screen to jump (hold for a higher jump)<br>⌨️ Space / ↑ to jump &nbsp;|&nbsp; P pause &nbsp;|&nbsp; R restart</p>
     <button id="startBtn" class="px-btn big" aria-label="Start game">▶ START</button>
   </div>
 </section>
