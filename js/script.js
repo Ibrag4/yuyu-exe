@@ -23,28 +23,28 @@ const CONFIG = {
     {
       title: "Gift #2: Mureta Memories",
       message:
-        "My first time at the Mureta with someone, and honestly, it was such a lovely evening. Good views, cold beer, and great company.",
+        "Some places become special because of the people you share them with. Good views, cold beer, and a moment worth remembering.",
       caption: " A pretty good night, if you ask me.",
       image: "assets/images/field-trip-02-placeholder.png",
     },
     {
       title: "Gift #3: Sunrise & Good Company",
       message:
-        "Another first for me: watching the sunrise with great company, a really good song, and an amazing view. One of those mornings that makes waking up early totally worth it haha.",
+        "A little music, the sky slowly changing colors, and someone who made the whole morning feel even better. Definitely one to keep in mind haha.",
       caption: "Good music, pretty skies, and a memory worth keeping.",
       image: "assets/images/field-trip-03-placeholder.png",
     },
     {
       title: "Gift #4: The Skate Day",
       message:
-        "My first time skating at Praça XV, even though I'd been there for coffee before. A few falls, unexpected conversations, good moments, and a lot to think about on the way home. One of the most memorable days of my year, for sure.",
+        "A few falls, unexpected conversations, familiar faces, and moments I didn't see coming. Praça XV gave me a lot more than just a skating session that day. Definitely one of those days I'll look back on with a smile.",
       caption: "One of those days I'll remember for the rest of my life.",
       image: "assets/images/field-trip-04-placeholder.png",
     },
     {
       title: "Gift #5: That One Night",
       message:
-        "Skating, playing football, and doing all those random things together that night. I’m really glad we got to share those hours. It’s strange how a few hours can leave you with so much to remember. 🤍",
+        "Skating, playing football, and getting caught up in all kinds of random little adventures. I'm really glad we got to spend that time together. Funny how some moments stay with you long after they're over. 🤍",
       caption: "A Little Piece of That Night.",
       image: "assets/images/final-photo-placeholder.png",
     },
@@ -59,7 +59,7 @@ const CONFIG = {
     title: "Happy Birthday, Yuyu!",
     message:
       "I hope this new year brings you beautiful surprises, good music, new adventures, and countless reasons to smile. Having you cross my path has meant more to me than you might realize. You’ve changed the way I see certain things in life, made me question some of my own perspectives, and left me with moments and thoughts I’ll carry with me for a long time. I’m genuinely glad I got to know you, and I hope life gives you back all the good things you bring into the world. Keep being your own kind of amazing. And, of course, eat lots of cake today.",
-    signature: "— A little reminder that you matter ✨",
+    signature: "— A little reminder that you matter ✨ miss u",
   },
 };
 
