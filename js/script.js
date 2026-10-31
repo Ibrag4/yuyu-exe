@@ -59,7 +59,7 @@ const CONFIG = {
     title: "Happy Birthday, Yuyu!",
     message:
       "I hope this new year brings you beautiful surprises, good music, new adventures, and countless reasons to smile. Having you cross my path has meant more to me than you might realize. You’ve changed the way I see certain things in life, made me question some of my own perspectives, and left me with moments and thoughts I’ll carry with me for a long time. I’m genuinely glad I got to know you, and I hope life gives you back all the good things you bring into the world. Keep being your own kind of amazing. And, of course, eat lots of cake today.",
-    signature: "— A little reminder that you matter ✨ miss u",
+    signature: "— A little reminder that you matter ✨",
   },
 };
 
